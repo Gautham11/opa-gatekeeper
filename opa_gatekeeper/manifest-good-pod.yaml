@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good-pod
+  namespace: opa-demo
+  labels:
+    owner: dave
+    env: prod
+    cost-center: cc-7700
+spec:
+  containers:
+    - name: app
+      image: registry.k8s.io/pause:3.9
+      securityContext:
+        privileged: false
+        runAsNonRoot: true
+        runAsUser: 65532

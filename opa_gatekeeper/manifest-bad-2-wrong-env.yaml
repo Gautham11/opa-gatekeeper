@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-wrong-env
+  namespace: opa-demo
+  labels:
+    owner: alice
+    env: production           # violates regex: must be dev|staging|prod
+    cost-center: cc-1234
+spec:
+  containers:
+    - name: nginx
+      image: registry.k8s.io/pause:3.9

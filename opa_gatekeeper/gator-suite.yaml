@@ -1,0 +1,50 @@
+kind: Suite
+apiVersion: test.gatekeeper.sh/v1alpha1
+metadata:
+  name: opa-demo-suite
+tests:
+  - name: required-labels
+    template: template-01-required-labels.yaml
+    constraint: constraint-01-required-labels.yaml
+    cases:
+      - name: pod-with-all-labels-admitted
+        object: manifest-good-pod.yaml
+        assertions:
+          - violations: no
+      - name: pod-missing-labels-rejected
+        object: manifest-bad-1-no-labels.yaml
+        assertions:
+          - violations: yes
+            message: "must have owner"
+      - name: pod-with-bad-env-rejected
+        object: manifest-bad-2-wrong-env.yaml
+        assertions:
+          - violations: yes
+
+  - name: allowed-repos
+    template: template-02-allowed-repos.yaml
+    constraint: constraint-02-allowed-repos.yaml
+    cases:
+      - name: trusted-registry-admitted
+        object: manifest-good-pod.yaml
+        assertions:
+          - violations: no
+      - name: untrusted-registry-rejected
+        object: manifest-bad-3-untrusted-registry.yaml
+        assertions:
+          - violations: yes
+            message: "disallowed image"
+
+  - name: no-privileged
+    template: template-03-no-privileged.yaml
+    constraint: constraint-03-no-privileged.yaml
+    cases:
+      - name: non-privileged-admitted
+        object: manifest-good-pod.yaml
+        assertions:
+          - violations: no
+      - name: privileged-rejected
+        object: manifest-bad-4-privileged.yaml
+        assertions:
+          - violations: yes
+            message: "Privileged container is not allowed"

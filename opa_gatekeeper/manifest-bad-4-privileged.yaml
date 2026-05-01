@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-privileged
+  namespace: opa-demo
+  labels:
+    owner: carol
+    env: staging
+    cost-center: cc-4242
+spec:
+  containers:
+    - name: privileged-thing
+      image: registry.k8s.io/pause:3.9
+      securityContext:
+        privileged: true       # violates no-privileged constraint

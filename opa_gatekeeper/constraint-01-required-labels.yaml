@@ -1,0 +1,19 @@
+apiVersion: constraints.gatekeeper.sh/v1beta1
+kind: K8sRequiredLabels
+metadata:
+  name: must-have-owner-and-env
+spec:
+  enforcementAction: deny
+  match:
+    kinds:
+      - apiGroups: [""]
+        kinds: ["Pod"]
+    namespaces: ["opa-demo"]
+  parameters:
+    message: "Pods in opa-demo must have owner, env, and cost-center labels."
+    labels:
+      - key: owner
+      - key: env
+        allowedRegex: "^(dev|staging|prod)$"
+      - key: cost-center
+        allowedRegex: "^cc-[0-9]{4}$"
