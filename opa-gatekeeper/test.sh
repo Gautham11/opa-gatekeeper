@@ -22,8 +22,16 @@ failures=0
 # ---- layer 1: opa test -----------------------------------------------------
 header "Layer 1: opa test (Rego unit tests)"
 if command -v opa >/dev/null 2>&1; then
-  # opa test takes specific files or a directory; we pass the test files explicitly
-  if opa test test-required-labels.rego test-required-labels-cases.rego \
+  # Rego in this repo uses the v0 implicit-keyword style (same as Gatekeeper
+  # ships in its templates). OPA v1.0+ requires --v0-compatible to parse it.
+  # OPA v0.x doesn't know that flag, so we only add it when needed.
+  OPA_FLAGS=""
+  if opa version 2>/dev/null | grep -qE '^Version: 1\.'; then
+    OPA_FLAGS="--v0-compatible"
+  fi
+
+  if opa test $OPA_FLAGS \
+              test-required-labels.rego test-required-labels-cases.rego \
               test-allowed-repos.rego  test-allowed-repos-cases.rego \
               test-no-privileged.rego  test-no-privileged-cases.rego -v; then
     ok "Rego unit tests passed"
@@ -51,7 +59,8 @@ fi
 # ---- layer 3: gator test (one-shot dry-run) --------------------------------
 header "Layer 3: gator test (manifests vs. real constraints)"
 if command -v gator >/dev/null 2>&1; then
-  TMP="$(mktemp)"
+  # gator test requires .yaml/.yml/.json extension on the input bundle
+  TMP="$(mktemp -t opa-bundle.XXXXXX).yaml"
   trap 'rm -f "$TMP"' EXIT
   for f in template-*.yaml constraint-*.yaml manifest-*.yaml; do
     printf '%s\n' '---'  >> "$TMP"
@@ -62,8 +71,10 @@ if command -v gator >/dev/null 2>&1; then
   output=$(gator test --filename="$TMP" 2>&1) || true
   printf '%s\n\n' "$output"
 
-  bad_denied=$(printf '%s' "$output" | grep -cE 'bad-[0-9]+' || true)
-  good_denied=$(printf '%s' "$output" | grep -cE 'good-pod' || true)
+  # gator emits pod metadata names like "bad-no-labels", "bad-privileged" etc.
+  # Match anything starting with "bad-" followed by a letter or digit.
+  bad_denied=$(printf '%s\n' "$output" | grep -cE '/bad-' || true)
+  good_denied=$(printf '%s\n' "$output" | grep -cE '/good-' || true)
   if [ "$bad_denied" -ge 4 ] && [ "$good_denied" -eq 0 ]; then
     ok "Expected denials present, good-pod admitted ($bad_denied bad / $good_denied good)"
   else

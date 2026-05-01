@@ -1,9 +1,31 @@
 package k8spspprivilegedcontainer
 
+import future.keywords.in
+
+# Policy code
+violation[{"msg": msg, "details": {}}] {
+  c := input_containers[_]
+  c.securityContext.privileged
+  msg := sprintf(
+    "Privileged container is not allowed: %v, securityContext: %v",
+    [c.name, c.securityContext]
+  )
+}
+
+input_containers[c] {
+  c := input.review.object.spec.containers[_]
+}
+
+input_containers[c] {
+  c := input.review.object.spec.initContainers[_]
+}
+
+# Test helpers
 mock_pod(containers) := {
   "review": {"object": {"spec": {"containers": containers}}},
 }
 
+# Tests
 test_non_privileged_passes {
   count(violation) == 0 with input as mock_pod([
     {"name": "app", "image": "nginx",

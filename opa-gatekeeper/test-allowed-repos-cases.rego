@@ -1,5 +1,35 @@
 package k8sallowedrepos
 
+import future.keywords.in
+
+# Policy code
+violation[{"msg": msg}] {
+  container := input.review.object.spec.containers[_]
+  satisfied := [good |
+    repo := input.parameters.repos[_]
+    good := startswith(container.image, repo)
+  ]
+  not any(satisfied)
+  msg := sprintf(
+    "container <%v> uses disallowed image <%v>; allowed prefixes: %v",
+    [container.name, container.image, input.parameters.repos]
+  )
+}
+
+violation[{"msg": msg}] {
+  container := input.review.object.spec.initContainers[_]
+  satisfied := [good |
+    repo := input.parameters.repos[_]
+    good := startswith(container.image, repo)
+  ]
+  not any(satisfied)
+  msg := sprintf(
+    "init container <%v> uses disallowed image <%v>; allowed prefixes: %v",
+    [container.name, container.image, input.parameters.repos]
+  )
+}
+
+# Test helpers
 default_params := {"repos": ["registry.k8s.io/", "quay.io/prometheus/"]}
 
 mock_pod(containers) := {
@@ -7,6 +37,7 @@ mock_pod(containers) := {
   "review": {"object": {"spec": {"containers": containers}}},
 }
 
+# Tests
 test_trusted_image_passes {
   count(violation) == 0 with input as mock_pod([
     {"name": "app", "image": "registry.k8s.io/pause:3.9"},
